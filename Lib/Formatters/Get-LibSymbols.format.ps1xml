@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Configuration>
+    <ViewDefinitions>
+        <View>
+            <Name>SymbolTypeView</Name>
+            <ViewSelectedBy>
+		        <TypeName>COFF.SymbolInfo</TypeName>
+		    </ViewSelectedBy>
+            <TableControl>
+            <AutoSize/>
+                <TableHeaders>
+                    <TableColumnHeader>
+                        <Label>Module</Label>
+                    </TableColumnHeader>
+                    <TableColumnHeader>
+                        <Label>SymbolType</Label>
+                    </TableColumnHeader>
+                    <TableColumnHeader>
+                        <Label>UndecoratedName</Label>
+                    </TableColumnHeader>
+                    <TableColumnHeader>
+                        <Label>DecoratedName</Label>
+                    </TableColumnHeader>
+                </TableHeaders>
+                <TableRowEntries>
+                    <TableRowEntry>
+                        <TableColumnItems>
+                            <TableColumnItem>
+                                <PropertyName>Module</PropertyName>
+                            </TableColumnItem>
+                            <TableColumnItem>
+                                <PropertyName>SymbolType</PropertyName>
+                            </TableColumnItem>
+                            <TableColumnItem>
+                                <PropertyName>UndecoratedName</PropertyName>
+                            </TableColumnItem>
+                            <TableColumnItem>
+                                <PropertyName>DecoratedName</PropertyName>
+                            </TableColumnItem>
+                        </TableColumnItems>
+                    </TableRowEntry>
+                </TableRowEntries>
+            </TableControl>
+        </View>
+    </ViewDefinitions>
+</Configuration>
