@@ -45,7 +45,7 @@ Returns a custom object consisting of the method name, metadata token, method si
         $MetadataToken,
 
         [Parameter(Mandatory = $True, ParameterSetName = 'MethodInfo', ValueFromPipeline = $True)]
-        [Reflection.MethodInfo]
+        [Reflection.MethodBase]
         $MethodInfo,
 
         [Parameter(Mandatory = $True, ParameterSetName = 'MethodDef', ValueFromPipeline = $True)]
