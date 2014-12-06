@@ -64,7 +64,10 @@ FunctionsToExport = @('Get-CSDisassembly',
                       'Get-ProcessStrings',
                       'Get-AssemblyResources',
                       'Get-AssemblyStrings',
-                      'Get-AssemblyImplementedMethods')
+                      'Get-AssemblyImplementedMethods',
+                      'Get-HostsFile',
+                      'New-HostsFileEntry',
+                      'Remove-HostsFileEntry')
 
 # Cmdlets to export from this module
 CmdletsToExport = ''

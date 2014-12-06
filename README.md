@@ -14,7 +14,19 @@ Disassembles a raw MSIL byte array passed in from a MethodInfo object in a manne
 
 ## MalwareAnalysis
 
-**Analyze potentially malicious .NET executables.**
+**Useful tools when performing malware analysis.**
+
+#### `Get-HostsFile`
+
+Parses a HOSTS file.
+
+#### `New-HostsFileEntry`
+
+Replace or append an entry to a HOSTS file.
+
+#### `Remove-HostsFileEntry`
+
+Remove an entry or series of entries from a HOSTS file.
 
 #### `Get-AssemblyStrings`
 
