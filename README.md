@@ -36,6 +36,10 @@ Output all strings from a .NET executable.
 
 Extract managed resources from a .NET assembly
 
+#### `Remove-AssemblySuppressIldasmAttribute`
+
+Strips a SuppressIldasmAttribute attribute from a .NET assembly.
+
 #### `Get-AssemblyImplementedMethods`
 
 Returns all methods in an assembly that are implemented in MSIL.
