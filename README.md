@@ -16,6 +16,10 @@ Disassembles a raw MSIL byte array passed in from a MethodInfo object in a manne
 
 **Useful tools when performing malware analysis.**
 
+#### `New-FunctionDelegate`
+
+Provides an executable wrapper for an X86 or X86_64 function.
+
 #### `Get-HostsFile`
 
 Parses a HOSTS file.
