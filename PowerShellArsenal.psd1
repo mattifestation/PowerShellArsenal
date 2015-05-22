@@ -55,6 +55,7 @@ FunctionsToExport = @('Get-CSDisassembly',
                       'Get-Entropy',
                       'Get-Member',
                       'Get-PE',
+                      'Get-PEB',
                       'Find-ProcessPEs',
                       'Get-LibSymbols',
                       'Get-ObjDump',
@@ -70,7 +71,10 @@ FunctionsToExport = @('Get-CSDisassembly',
                       'Remove-HostsFileEntry',
                       'Remove-AssemblySuppressIldasmAttribute',
                       'New-FunctionDelegate',
-                      'Get-NtSystemInformation')
+                      'Get-NtSystemInformation',
+                      'Register-ProcessModuleTrace',
+                      'Get-ProcessModuleTrace',
+                      'Unregister-ProcessModuleTrace')
 
 # Cmdlets to export from this module
 CmdletsToExport = ''
