@@ -20,6 +20,14 @@ Disassembles a raw MSIL byte array passed in from a MethodInfo object in a manne
 
 Provides an executable wrapper for an X86 or X86_64 function.
 
+#### `Invoke-LoadLibrary`
+
+Loads a DLL into the current PowerShell process.
+
+#### `New-DllExportFunction`
+
+Creates an executable wrapper delegate around an unmanaged, exported function.
+
 #### `Get-HostsFile`
 
 Parses a HOSTS file.
