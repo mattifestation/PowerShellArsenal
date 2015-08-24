@@ -599,7 +599,7 @@ Known issues:
                 $ImageType = 'File'
                 $ProcessID = $PID
 
-                $PELen = $FileByteArray.Length
+                $PELen = $FileBytes.Length
                 # Pin the byte array in memory (i.e. do not garbage collect)
                 # so you can reliably dereference it.
                 $Handle = [Runtime.InteropServices.GCHandle]::Alloc($FileBytes, 'Pinned')
