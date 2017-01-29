@@ -39,7 +39,8 @@ FormatsToProcess = @('Lib\Formatters\Get-CSDisassembly.format.ps1xml',
                      'Lib\Formatters\Get-PEB.format.ps1xml',
                      'Lib\Formatters\Get-PE.format.ps1xml',
                      'Lib\Formatters\ProcessModuleTrace.format.ps1xml',
-                     'Lib\Formatters\MemoryTools.format.ps1xml')
+                     'Lib\Formatters\MemoryTools.format.ps1xml',
+                     'Lib\Formatters\Get-PESymbols.format.ps1xml')
 
 # Modules to import as nested modules of the module specified in RootModule/ModuleToProcess
 NestedModules = @('Lib\Capstone\Capstone.psd1',
@@ -57,6 +58,7 @@ FunctionsToExport = @('Get-CSDisassembly',
                       'Get-PE',
                       'Get-PEB',
                       'Find-ProcessPEs',
+                      'Get-PESymbols',
                       'Get-LibSymbols',
                       'Get-ObjDump',
                       'Get-SystemInfo',
