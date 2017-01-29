@@ -18,7 +18,7 @@ to another path (it requires Powershell restart before the cmdlet will use the n
 
 .PARAMETER Path
 
-Specifies a path to one or more lib file locations.
+Specifies a path to one or more PE file locations.
 
 .PARAMETER SearchMask
 
@@ -31,11 +31,15 @@ and a cache folder, eg.: SRV*C:\symbols\dbg*https://msdl.microsoft.com/download/
 
 .EXAMPLE
 
-Get-PESymbols -Path kernel32.dll
+Get-PESymbols -Path c:\windows\system32\kernel32.dll
 
 .EXAMPLE
 
-ls *.lib | Get-PESymbols
+PS temp> Get-PESymbols -Path c:\windows\system32\kernel32.dll -SearchMask Load* -PdbSearchPath "SRV*C:\symbols\dbg*https://msdl.microsoft.com/download/symbols"
+
+.EXAMPLE
+
+ls *.dll | Get-PESymbols
 
 .INPUTS
 
