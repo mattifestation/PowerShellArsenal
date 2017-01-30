@@ -103,51 +103,36 @@ COFF.SymbolInfo
             Name = field 2 String
         }
 
-        $Symbols = @()
-
-        $CallbackScript = {
-            Param (
-                [PDB.SYMBOL_INFO]$SymbolInfo,
-                [UInt32]$SymbolSize,
-                [IntPtr]$UserContext
-            )
-            Write-Host 'test'
-            $Symbols += New-Object -TypeName PDB.SHORT_SYMBOL_INFO -Property @{
-                Name = $SymbolInfo.Name
-                Index = $SymbolInfo.Index
-                RVA = $SymbolInfo.Address - $SymbolInfo.ModBase
-            }
-            return $True
-        }
-
-        function Local:Get-DelegateType
-        {
-            [OutputType([Type])]
-            Param (    
-                [Parameter( Position = 0)]
-                [Type[]]
-                $Parameters = (New-Object Type[](0)),
+        $Delegate = ([System.Management.Automation.PSTypeName]'PDB.SymEnumProcDelegateType').Type
+        if (-not $Delegate) {
+            function Local:Get-DelegateType
+            {
+                [OutputType([Type])]
+                Param (    
+                    [Parameter( Position = 0)]
+                    [Type[]]
+                    $Parameters = (New-Object Type[](0)),
             
-                [Parameter( Position = 1 )]
-                [Type]
-                $ReturnType = [Void]
-            )
+                    [Parameter( Position = 1 )]
+                    [Type]
+                    $ReturnType = [Void]
+                )
 
-            $Domain = [AppDomain]::CurrentDomain
-            $DynAssembly = New-Object System.Reflection.AssemblyName('ReflectedDelegate')
-            $AssemblyBuilder = $Domain.DefineDynamicAssembly($DynAssembly, [System.Reflection.Emit.AssemblyBuilderAccess]::Run)
-            $ModuleBuilder = $AssemblyBuilder.DefineDynamicModule('InMemoryModule', $False)
-            $TypeBuilder = $ModuleBuilder.DefineType('MyDelegateType', 'Class, Public, Sealed, AnsiClass, AutoClass', [System.MulticastDelegate])
-            $ConstructorBuilder = $TypeBuilder.DefineConstructor('RTSpecialName, HideBySig, Public', [System.Reflection.CallingConventions]::Standard, $Parameters)
-            $ConstructorBuilder.SetImplementationFlags('Runtime, Managed')
-            $MethodBuilder = $TypeBuilder.DefineMethod('Invoke', 'Public, HideBySig, NewSlot, Virtual', $ReturnType, $Parameters)
-            $MethodBuilder.SetImplementationFlags('Runtime, Managed')
+                $Domain = [AppDomain]::CurrentDomain
+                $DynAssembly = New-Object System.Reflection.AssemblyName('ReflectedDelegate')
+                $AssemblyBuilder = $Domain.DefineDynamicAssembly($DynAssembly, [System.Reflection.Emit.AssemblyBuilderAccess]::Run)
+                $ModuleBuilder = $AssemblyBuilder.DefineDynamicModule('InMemoryModule', $False)
+                $TypeBuilder = $ModuleBuilder.DefineType('PDB.SymEnumProcDelegateType', 'Class, Public, Sealed, AnsiClass, AutoClass', [System.MulticastDelegate])
+                $ConstructorBuilder = $TypeBuilder.DefineConstructor('RTSpecialName, HideBySig, Public', [System.Reflection.CallingConventions]::Standard, $Parameters)
+                $ConstructorBuilder.SetImplementationFlags('Runtime, Managed')
+                $MethodBuilder = $TypeBuilder.DefineMethod('Invoke', 'Public, HideBySig, NewSlot, Virtual', $ReturnType, $Parameters)
+                $MethodBuilder.SetImplementationFlags('Runtime, Managed')
         
-            return $TypeBuilder.CreateType()
-        }
+                return $TypeBuilder.CreateType()
+            }
 
-        $Delegate = Get-DelegateType @([PDB.SYMBOL_INFO], [UInt32], [IntPtr]) ([Boolean])
-        $Callback = $CallbackScript -as $Delegate
+            $Delegate = Get-DelegateType @([PDB.SYMBOL_INFO], [UInt32], [IntPtr]) ([Boolean])
+        }
 
         $FunctionDefinitions = @(
             (func dbghelp SymInitialize ([Boolean]) @([IntPtr], [String], [Boolean]) -SetLastError),
@@ -170,15 +155,29 @@ COFF.SymbolInfo
             $hProcess = [IntPtr]123
             $BaseAddress = 0x01000000
 
-            $DbgHelp::SymInitialize($hProcess, $PdbSearchPath, $False)
+            $DbgHelp::SymInitialize($hProcess, $PdbSearchPath, $False) | Out-Null
 
-            $DbgHelp::SymLoadModuleEx($hProcess, [IntPtr]-1, $DllFilePath, $null, $BaseAddress, 0x0, [IntPtr]::Zero, 0)
+            $DbgHelp::SymLoadModuleEx($hProcess, [IntPtr]-1, $DllFilePath, $null, $BaseAddress, 0x0, [IntPtr]::Zero, 0) | Out-Null
 
-            $Symbols.Clear()
-            $DbgHelp::SymEnumSymbols($hProcess, $BaseAddress, $SearchMask, $Callback, [IntPtr]::Zero)
+            $script:Symbols = @()
+            $CallbackScript = {
+                Param (
+                    [PDB.SYMBOL_INFO]$SymbolInfo,
+                    [UInt32]$SymbolSize,
+                    [IntPtr]$UserContext
+                )
+                Write-Output @{
+                    Name = $SymbolInfo.Name
+                    Index = $SymbolInfo.Index
+                    RVA = $SymbolInfo.Address - $SymbolInfo.ModBase
+                }
+                return $True
+            }
+            $Callback = $CallbackScript -as $Delegate
+            $DbgHelp::SymEnumSymbols($hProcess, $BaseAddress, $SearchMask, $Callback, [IntPtr]::Zero) | Out-Null
             $Symbols
 
-            $DbgHelp::SymCleanup($hProcess)
+            $DbgHelp::SymCleanup($hProcess) | Out-Null
         }
     }
 
