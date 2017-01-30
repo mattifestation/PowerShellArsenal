@@ -4,7 +4,7 @@
         <View>
             <Name>PDBSymbolInfoView</Name>
             <ViewSelectedBy>
-		        <TypeName>PDB.SymbolInfo</TypeName>
+		        <TypeName>PDB.SHORT_SYMBOL_INFO</TypeName>
 		    </ViewSelectedBy>
             <TableControl>
                 <AutoSize/>

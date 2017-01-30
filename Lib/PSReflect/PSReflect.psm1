@@ -517,6 +517,10 @@ Specifies the memory alignment of fields.
 
 Indicates that an explicit offset for each field will be specified.
 
+.PARAMETER Charset
+
+Specifies whether strings inside the struct will be marshalled as LPWSTR or LPSTR.
+
 .EXAMPLE
 
 $Mod = New-InMemoryModule -ModuleName Win32
@@ -585,7 +589,10 @@ New-Struct. :P
         $PackingSize = [Reflection.Emit.PackingSize]::Unspecified,
 
         [Switch]
-        $ExplicitLayout
+        $ExplicitLayout,
+
+        [Runtime.InteropServices.CharSet]
+        $Charset = [Runtime.InteropServices.CharSet]::Auto
     )
 
     if ($Module -is [Reflection.Assembly])
@@ -602,13 +609,22 @@ New-Struct. :P
     if ($ExplicitLayout)
     {
         $StructAttributes = $StructAttributes -bor [Reflection.TypeAttributes]::ExplicitLayout
+        $StructLayoutKind = [System.Runtime.InteropServices.LayoutKind]::Explicit
     }
     else
     {
         $StructAttributes = $StructAttributes -bor [Reflection.TypeAttributes]::SequentialLayout
+        $StructLayoutKind = [System.Runtime.InteropServices.LayoutKind]::Sequential
     }
 
     $StructBuilder = $Module.DefineType($FullName, $StructAttributes, [ValueType], $PackingSize)
+    # Set attributes on the newly created struct type
+    $CharsetField = [Runtime.InteropServices.StructLayoutAttribute].GetField('CharSet')
+    $StructAttributeBuilder = New-Object System.Reflection.Emit.CustomAttributeBuilder(
+        [Runtime.InteropServices.StructLayoutAttribute].GetConstructors()[0], @($StructLayoutKind),
+        @(), @(), @($CharsetField), @($Charset))
+    $StructBuilder.SetCustomAttribute($StructAttributeBuilder)
+
     $ConstructorInfo = [Runtime.InteropServices.MarshalAsAttribute].GetConstructors()[0]
     $SizeConst = @([Runtime.InteropServices.MarshalAsAttribute].GetField('SizeConst'))
 
