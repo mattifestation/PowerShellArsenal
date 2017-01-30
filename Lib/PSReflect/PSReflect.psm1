@@ -238,6 +238,10 @@ are all incorporated into the same in-memory module.
 
     PROCESS
     {
+        # DllName might be a path to a DLL - we need to sanitize it then
+        $DllPath = $DllName
+        $DllName = [IO.Path]::GetFileNameWithoutExtension($DllName)
+
         if ($Module -is [Reflection.Assembly])
         {
             if ($Namespace)
@@ -291,7 +295,7 @@ are all incorporated into the same in-memory module.
             # Equivalent to C# version of [DllImport(DllName)]
             $Constructor = [Runtime.InteropServices.DllImportAttribute].GetConstructor([String])
             $DllImportAttribute = New-Object Reflection.Emit.CustomAttributeBuilder($Constructor,
-                $DllName, [Reflection.PropertyInfo[]] @(), [Object[]] @(),
+                $DllPath, [Reflection.PropertyInfo[]] @(), [Object[]] @(),
                 [Reflection.FieldInfo[]] @($SetLastErrorField, $CallingConventionField, $CharsetField),
                 [Object[]] @($SLEValue, ([Runtime.InteropServices.CallingConvention] $NativeCallingConvention), ([Runtime.InteropServices.CharSet] $Charset)))
 
@@ -618,12 +622,15 @@ New-Struct. :P
     }
 
     $StructBuilder = $Module.DefineType($FullName, $StructAttributes, [ValueType], $PackingSize)
-    # Set attributes on the newly created struct type
-    $CharsetField = [Runtime.InteropServices.StructLayoutAttribute].GetField('CharSet')
-    $StructAttributeBuilder = New-Object System.Reflection.Emit.CustomAttributeBuilder(
-        [Runtime.InteropServices.StructLayoutAttribute].GetConstructors()[0], @($StructLayoutKind),
-        @(), @(), @($CharsetField), @($Charset))
-    $StructBuilder.SetCustomAttribute($StructAttributeBuilder)
+    if ($Charset -ne [Runtime.InteropServices.CharSet]::Auto) 
+    {
+        # Set attributes on the newly created struct type
+        $CharsetField = [Runtime.InteropServices.StructLayoutAttribute].GetField('CharSet')
+        $StructAttributeBuilder = New-Object System.Reflection.Emit.CustomAttributeBuilder(
+            [Runtime.InteropServices.StructLayoutAttribute].GetConstructors()[0], @($StructLayoutKind),
+            @(), @(), @($CharsetField), @($Charset))
+        $StructBuilder.SetCustomAttribute($StructAttributeBuilder)
+    }
 
     $ConstructorInfo = [Runtime.InteropServices.MarshalAsAttribute].GetConstructors()[0]
     $SizeConst = @([Runtime.InteropServices.MarshalAsAttribute].GetField('SizeConst'))

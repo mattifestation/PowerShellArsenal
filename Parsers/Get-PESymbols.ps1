@@ -76,7 +76,7 @@ COFF.SymbolInfo
             $DbgHelpPath = 'dbghelp.dll'
         }
 
-        $Mod = New-InMemoryModule -ModuleName PEParser
+        $Mod = New-InMemoryModule -ModuleName PDBParser
 
         $SymbolInfoType = struct $Mod PDB.SYMBOL_INFO @{
             SizeOfStruct = field 0 UInt32
@@ -95,7 +95,7 @@ COFF.SymbolInfo
             NameLen = field 13 UInt32
             MaxNameLen = field 14 UInt32
             Name = field 15 String -MarshalAs @('ByValTStr', 1024)
-        }
+        } -Charset ([Runtime.InteropServices.CharSet]::Unicode)
 
         $ShortSymbolInfoType = struct $Mod PDB.SHORT_SYMBOL_INFO @{
             Index = field 0 UInt32
@@ -151,10 +151,10 @@ COFF.SymbolInfo
         $Callback = $CallbackScript -as $Delegate
 
         $FunctionDefinitions = @(
-            (func dbghelp SymInitialize ([Boolean]) @([IntPtr], [String], [Boolean]) -Charset ([Runtime.InteropServices.CharSet]::Unicode) -SetLastError),
-            (func dbghelp SymLoadModuleEx ([Int64]) @([IntPtr], [IntPtr], [String], [String], [Int64], [Int32], [IntPtr], [Int32]) -Charset ([Runtime.InteropServices.CharSet]::Unicode) -SetLastError),
-            (func dbghelp SymEnumSymbols ([Boolean]) @([IntPtr], [Int64], [String], $Delegate, [IntPtr]) -Charset ([Runtime.InteropServices.CharSet]::Unicode) -SetLastError),
-            (func dbghelp SymCleanup ([Boolean]) @([IntPtr]) -Charset ([Runtime.InteropServices.CharSet]::Unicode) -SetLastError)
+            (func $DbgHelpPath SymInitialize ([Boolean]) @([IntPtr], [String], [Boolean]) -Charset ([Runtime.InteropServices.CharSet]::Unicode) -SetLastError),
+            (func $DbgHelpPath SymLoadModuleEx ([Int64]) @([IntPtr], [IntPtr], [String], [String], [Int64], [Int32], [IntPtr], [Int32]) -Charset ([Runtime.InteropServices.CharSet]::Unicode) -SetLastError),
+            (func $DbgHelpPath SymEnumSymbols ([Boolean]) @([IntPtr], [Int64], [String], $Delegate, [IntPtr]) -Charset ([Runtime.InteropServices.CharSet]::Unicode) -SetLastError),
+            (func $DbgHelpPath SymCleanup ([Boolean]) @([IntPtr]) -Charset ([Runtime.InteropServices.CharSet]::Unicode) -SetLastError)
         )
 
         $Types = $FunctionDefinitions | Add-Win32Type -Module $Mod -Namespace 'PDB'
@@ -171,15 +171,15 @@ COFF.SymbolInfo
             $hProcess = [IntPtr]123
             $BaseAddress = 0x01000000
 
-            $DbgHelp::SymInitialize($hProcess, $PdbSearchPath, $False) | Out-Null
+            $null = $DbgHelp::SymInitialize($hProcess, $PdbSearchPath, $False)
 
-            $DbgHelp::SymLoadModuleEx($hProcess, [IntPtr]-1, $DllFilePath, $null, $BaseAddress, 0x0, [IntPtr]::Zero, 0) | Out-Null
+            $null = $DbgHelp::SymLoadModuleEx($hProcess, [IntPtr]-1, $DllFilePath, $null, $BaseAddress, 0x0, [IntPtr]::Zero, 0)
 
             $Symbols.Clear()
-            $DbgHelp::SymEnumSymbols($hProcess, $BaseAddress, $SearchMask, $Callback, [IntPtr]::Zero) | Out-Null
+            $null = $DbgHelp::SymEnumSymbols($hProcess, $BaseAddress, $SearchMask, $Callback, [IntPtr]::Zero)
             $Symbols
 
-            $DbgHelp::SymCleanup($hProcess) | Out-Null
+            $null = $DbgHelp::SymCleanup($hProcess)
         }
     }
 
