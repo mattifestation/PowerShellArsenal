@@ -69,132 +69,95 @@ COFF.SymbolInfo
 
     BEGIN
     {
-        if (-not ([System.Management.Automation.PSTypeName]'PDB.DbgHelpWrapper').Type)
-        {
-            if (-not [String]::IsNullOrWhiteSpace($env:_DBGHELP_PATH) -and 
-                $(Test-Path $env:_DBGHELP_PATH)) {
-                $DbgHelpPath = $env:_DBGHELP_PATH
-            } else {
-                $DbgHelpPath = "dbghelp.dll"
-            }
-            $Code = @'
-            using System;
-            using System.Runtime.InteropServices;
-            using System.ComponentModel;
-            using Microsoft.Win32;
-            using System.Collections.Generic;
-
-            namespace PDB 
-            {
-                public class SymbolInfo {
-                    public String Name { get; set; }
-    
-                    public UInt64 RVA { get; set; }
-    
-                    public UInt32 Index { get; set; }
-                }
-
-                public class DbgHelpWrapper 
-                {
-'@
-            $Code += "`r`nconst string DbgHelpPath = @`"$DbgHelpPath`";`r`n";
-            $Code += @'
-                    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-                    internal struct SYMBOL_INFO
-                    {
-                        public UInt32 SizeOfStruct;  
-                        public UInt32 TypeIndex;  
-                        public UInt64 Reserved1;  
-                        public UInt64 Reserved2;  
-                        public UInt32 Index;  
-                        public UInt32 Size;  
-                        public UInt64 ModBase; 
-                        public UInt32 Flags;  
-                        public UInt64 Value;  
-                        public UInt64 Address;  
-                        public UInt32 Register;  
-                        public UInt32 Scope;  
-                        public UInt32 Tag;  
-                        public UInt32 NameLen;  
-                        public UInt32 MaxNameLen;  
-
-                        [MarshalAs(UnmanagedType.ByValTStr, SizeConst=1024)]
-                        public string Name;
-                    }
-    
-                    delegate bool SymEnumSymbolsProc(
-                            [MarshalAs(UnmanagedType.Struct)]
-                            SYMBOL_INFO pSymInfo,
-                            UInt32 SymbolSize,
-                            IntPtr UserContext);
-    
-                    [DllImport(DbgHelpPath, CharSet = CharSet.Unicode, SetLastError = true)]
-	                extern static Boolean SymInitialize(IntPtr hProcess, 
-                                                        [MarshalAs(UnmanagedType.LPTStr)]
-                                                        String UserSearchPath, 
-                                                        Boolean fInvadeProcess);
-	
-                    [DllImport(DbgHelpPath, CharSet = CharSet.Unicode, SetLastError = true)]
-	                extern static Int64 SymLoadModuleEx(IntPtr hProcess, 
-                                                        IntPtr hFile, 
-                                                        [MarshalAs(UnmanagedType.LPTStr)]
-                                                        String ImageName,
-                                                        [MarshalAs(UnmanagedType.LPTStr)]
-                                                        String ModuleName, 
-                                                        Int64 BaseOfDll, 
-                                                        Int32 DllSize,
-                                                        IntPtr Data, 
-                                                        Int32 Flags);
-                                            
-                    [DllImport(DbgHelpPath, CharSet = CharSet.Unicode, SetLastError = true)]
-                    extern static bool SymEnumSymbols(IntPtr hProcess, 
-                                                      Int64 BaseOfDll, 
-                                                      [MarshalAs(UnmanagedType.LPTStr)]
-                                                      String Mask,
-                                                      SymEnumSymbolsProc EnumSymbolsCallback, 
-                                                      IntPtr UserContext);
-                                      
-                    [DllImport(DbgHelpPath, CharSet = CharSet.Unicode, SetLastError = true)]
-                    extern static bool SymCleanup(IntPtr process);
-    
-                    public static SymbolInfo[] GetSymbolsForDll(String dllPath, String mask, String searchPath = null) {
-                        var regKey = RegistryKey.OpenBaseKey(RegistryHive.CurrentUser, RegistryView.Default);
-		                var handle = regKey.Handle.DangerousGetHandle();
-                        var hFile = new IntPtr(-1);
-                        Int64 baseAddress = 0x01000000;
-        
-                        if (!SymInitialize(handle, searchPath, false)) {
-                            throw new Win32Exception();
-                        }
-                        try {
-                            var res = SymLoadModuleEx(handle, hFile, dllPath, null, baseAddress, 0x0 /* FIXME */, IntPtr.Zero, 0);
-                            if (res == 0) {
-                                throw new Win32Exception();
-                            }
-    
-                            var result = new List<SymbolInfo>();
-                            if (!SymEnumSymbols(handle, baseAddress, mask, (symInfo, symSize, userCtx) => {
-                                result.Add(new SymbolInfo { 
-                                    Name = symInfo.Name,
-                                    RVA = symInfo.Address - symInfo.ModBase,
-                                    Index = symInfo.Index
-                                });
-                                return true; 
-                            }, IntPtr.Zero)) {
-                                throw new Win32Exception();
-                            }
-                            return result.ToArray();
-                        } finally {
-                            SymCleanup(handle);
-                            regKey.Dispose();
-                        }
-                    }
-                }
-
-            }
-'@
-            Add-Type -TypeDefinition $Code
+        if (-not [String]::IsNullOrWhiteSpace($env:_DBGHELP_PATH) -and 
+            $(Test-Path $env:_DBGHELP_PATH)) {
+            $DbgHelpPath = $env:_DBGHELP_PATH
+        } else {
+            $DbgHelpPath = 'dbghelp.dll'
         }
+
+        $Mod = New-InMemoryModule -ModuleName PEParser
+
+        $SymbolInfoType = struct $Mod PDB.SYMBOL_INFO @{
+            SizeOfStruct = field 0 UInt32
+            TypeIndex = field 1 UInt32
+            Reserved1 = field 2 UInt64
+            Reserved2 = field 3 UInt64
+            Index = field 4 UInt32
+            Size = field 5 UInt32
+            ModBase = field 6 UInt64
+            Flags = field 7 UInt32
+            Value = field 8 UInt64
+            Address = field 9 UInt64
+            Register = field 10 UInt32
+            Scope = field 11 UInt32
+            Tag = field 12 UInt32
+            NameLen = field 13 UInt32
+            MaxNameLen = field 14 UInt32
+            Name = field 15 String -MarshalAs @('ByValTStr', 1024)
+        }
+
+        $ShortSymbolInfoType = struct $Mod PDB.SHORT_SYMBOL_INFO @{
+            Index = field 0 UInt32
+            RVA = field 1 UInt64
+            Name = field 2 String
+        }
+
+        $Symbols = @()
+
+        $CallbackScript = {
+            Param (
+                [PDB.SYMBOL_INFO]$SymbolInfo,
+                [UInt32]$SymbolSize,
+                [IntPtr]$UserContext
+            )
+            Write-Host 'test'
+            $Symbols += New-Object -TypeName PDB.SHORT_SYMBOL_INFO -Property @{
+                Name = $SymbolInfo.Name
+                Index = $SymbolInfo.Index
+                RVA = $SymbolInfo.Address - $SymbolInfo.ModBase
+            }
+            return $True
+        }
+
+        function Local:Get-DelegateType
+        {
+            [OutputType([Type])]
+            Param (    
+                [Parameter( Position = 0)]
+                [Type[]]
+                $Parameters = (New-Object Type[](0)),
+            
+                [Parameter( Position = 1 )]
+                [Type]
+                $ReturnType = [Void]
+            )
+
+            $Domain = [AppDomain]::CurrentDomain
+            $DynAssembly = New-Object System.Reflection.AssemblyName('ReflectedDelegate')
+            $AssemblyBuilder = $Domain.DefineDynamicAssembly($DynAssembly, [System.Reflection.Emit.AssemblyBuilderAccess]::Run)
+            $ModuleBuilder = $AssemblyBuilder.DefineDynamicModule('InMemoryModule', $False)
+            $TypeBuilder = $ModuleBuilder.DefineType('MyDelegateType', 'Class, Public, Sealed, AnsiClass, AutoClass', [System.MulticastDelegate])
+            $ConstructorBuilder = $TypeBuilder.DefineConstructor('RTSpecialName, HideBySig, Public', [System.Reflection.CallingConventions]::Standard, $Parameters)
+            $ConstructorBuilder.SetImplementationFlags('Runtime, Managed')
+            $MethodBuilder = $TypeBuilder.DefineMethod('Invoke', 'Public, HideBySig, NewSlot, Virtual', $ReturnType, $Parameters)
+            $MethodBuilder.SetImplementationFlags('Runtime, Managed')
+        
+            return $TypeBuilder.CreateType()
+        }
+
+        $Delegate = Get-DelegateType @([PDB.SYMBOL_INFO], [UInt32], [IntPtr]) ([Boolean])
+        $Callback = $CallbackScript -as $Delegate
+
+        $FunctionDefinitions = @(
+            (func dbghelp SymInitialize ([Boolean]) @([IntPtr], [String], [Boolean]) -SetLastError),
+            (func dbghelp SymLoadModuleEx ([Int64]) @([IntPtr], [IntPtr], [String], [String], [Int64], [Int32], [IntPtr], [Int32]) -SetLastError),
+            (func dbghelp SymEnumSymbols ([Boolean]) @([IntPtr], [Int64], [String], $Delegate, [IntPtr]) -SetLastError),
+            (func dbghelp SymCleanup ([Boolean]) @([IntPtr]) -SetLastError)
+        )
+
+        $Types = $FunctionDefinitions | Add-Win32Type -Module $Mod -Namespace 'PDB'
+        $DbgHelp = $Types["dbghelp"]
     }
 
     PROCESS
@@ -204,7 +167,18 @@ COFF.SymbolInfo
             # Resolve the absolute path of the DLL file.
             $DllFilePath = Resolve-Path $File
             
-            [PDB.DbgHelpWrapper]::GetSymbolsForDll($DllFilePath, $SearchMask, $PdbSearchPath)
+            $hProcess = [IntPtr]123
+            $BaseAddress = 0x01000000
+
+            $DbgHelp::SymInitialize($hProcess, $PdbSearchPath, $False)
+
+            $DbgHelp::SymLoadModuleEx($hProcess, [IntPtr]-1, $DllFilePath, $null, $BaseAddress, 0x0, [IntPtr]::Zero, 0)
+
+            $Symbols.Clear()
+            $DbgHelp::SymEnumSymbols($hProcess, $BaseAddress, $SearchMask, $Callback, [IntPtr]::Zero)
+            $Symbols
+
+            $DbgHelp::SymCleanup($hProcess)
         }
     }
 
