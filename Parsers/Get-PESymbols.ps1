@@ -69,7 +69,7 @@ COFF.SymbolInfo
 
     BEGIN
     {
-        if (-not [String]::IsNullOrWhiteSpace($env:_DBGHELP_PATH) -and 
+        if (-not [String]::IsNullOrWhiteSpace($env:_DBGHELP_PATH) -and
             $(Test-Path $env:_DBGHELP_PATH)) {
             $DbgHelpPath = $env:_DBGHELP_PATH
         } else {
@@ -123,11 +123,11 @@ COFF.SymbolInfo
             function Local:Get-DelegateType
             {
                 [OutputType([Type])]
-                Param (    
+                Param (
                     [Parameter( Position = 0)]
                     [Type[]]
                     $Parameters = (New-Object Type[](0)),
-            
+
                     [Parameter( Position = 1 )]
                     [Type]
                     $ReturnType = [Void]
@@ -142,7 +142,7 @@ COFF.SymbolInfo
                 $ConstructorBuilder.SetImplementationFlags('Runtime, Managed')
                 $MethodBuilder = $TypeBuilder.DefineMethod('Invoke', 'Public, HideBySig, NewSlot, Virtual', $ReturnType, $Parameters)
                 $MethodBuilder.SetImplementationFlags('Runtime, Managed')
-        
+
                 return $TypeBuilder.CreateType()
             }
 
@@ -167,7 +167,7 @@ COFF.SymbolInfo
         {
             # Resolve the absolute path of the DLL file.
             $DllFilePath = Resolve-Path $File
-            
+
             $hProcess = [IntPtr]123
             $BaseAddress = 0x01000000
 
