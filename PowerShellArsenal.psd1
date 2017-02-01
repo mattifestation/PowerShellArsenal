@@ -50,6 +50,7 @@ NestedModules = @('Lib\Capstone\Capstone.psd1',
 # I've chosen to explicitly the functions I want to expose rather than exporting everything or calling Export-ModuleMember
 FunctionsToExport = @('Get-CSDisassembly',
                       'Get-ILDisassembly',
+                      'Get-MethodAssembly',
                       'Get-StructFromMemory',
                       'ConvertTo-String',
                       'Get-Strings',

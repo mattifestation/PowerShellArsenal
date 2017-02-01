@@ -1,4 +1,46 @@
-﻿
+﻿<#
+.SYNOPSIS
+
+    Disassembles a method in a module using the Capstone Engine disassembly framework.
+
+    PowerSploit Function: Get-MethodAssembly
+    Author: Sebastian Solnica (@lowleveldesign)
+    License: See LICENSE.TXT
+    Required Dependencies: Get-PE, Get-PESymbols, Get-CSDisassembly
+    Optional Dependencies: None
+
+.DESCRIPTION
+
+    Get-MethodAssembly returns assembly code of a method defined in a given module.
+
+.PARAMETER Module
+
+    A full path to the PE file containg a method to disassemble.
+
+.PARAMETER Method
+
+    A name of the method to disassemble (either an exported method or a method for which we have symbols).
+
+.PARAMETER Address
+
+    RVA of the method to disassemble (may be obtained using Get-PESymbols).
+
+.EXAMPLE
+
+    Get-MethodAssembly -Module c:\windows\system32\kernel32.dll -Method CreateProcessW
+
+    Get-MethodAssembly -Module c:\windows\system32\kernel32.dll -Address 0x0001BEC0
+
+.INPUTS
+
+    Accepts input from the Get-PESymbols cmdlet.
+
+.OUTPUTS
+
+    Capstone.Instruction[]
+
+    Get-MethodAssembly returns an array of Instruction objects.
+#>
 function Get-MethodAssembly {
 
     [CmdletBinding(DefaultParameterSetName = 'ByAddress')] Param (
@@ -13,6 +55,7 @@ function Get-MethodAssembly {
                    Position = 1,
                    ParameterSetName = 'ByName',
                    ValueFromPipelineByPropertyName = $True)]
+        [Alias("Name")]
         [String]
         $Method,
 
@@ -44,7 +87,7 @@ function Get-MethodAssembly {
 
         $OffsetInFile = $Rva - ($TextSection.VirtualAddress - $TextSection.PointerToRawData)
         $NumberOfBytesToRead = $TextSection.SizeOfRawData - ($Rva - $TextSection.VirtualAddress)
-        $NumberOfBytesToRead = [Math]::Min(2048, $NumberOfBytesToRead)
+        $NumberOfBytesToRead = [Math]::Min(512, $NumberOfBytesToRead)
 
         $FileStream = [IO.File]::OpenRead($Module)
         try {
@@ -66,12 +109,16 @@ function Get-MethodAssembly {
             }
 
             # find the return instruction
-            $ReturnIndex = $Code.Length - 1
+            $ReturnIndex = 0
             for ($i = 0; $i -lt $Code.Length; $i++) {
                 if ($Code[$i].Mnemonic -eq "ret") {
                     $ReturnIndex = $i
                     break
                 }
+            }
+            if ($ReturnIndex -eq 0) {
+                Write-Warning "Method too long - assembly code is stripped"
+                $ReturnIndex = $Code.Length - 1
             }
             $Code[0..$ReturnIndex]
         } finally {

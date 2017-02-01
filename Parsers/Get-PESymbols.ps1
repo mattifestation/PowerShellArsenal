@@ -49,7 +49,7 @@ You can pipe a file system path (in quotation marks) to Get-PESymbols.
 
 .OUTPUTS
 
-COFF.SymbolInfo
+PDB.SHORT_SYMBOL_INFO
 #>
     [CmdletBinding()] Param (
         [Parameter(Position = 0, Mandatory = $True, ValueFromPipelineByPropertyName = $True)]
@@ -101,6 +101,7 @@ COFF.SymbolInfo
             Index = field 0 UInt32
             RVA = field 1 UInt64
             Name = field 2 String
+            Module = field 3 String
         }
 
         $script:Symbols = @()
@@ -114,6 +115,7 @@ COFF.SymbolInfo
                 Name = $SymbolInfo.Name
                 Index = $SymbolInfo.Index
                 RVA = $SymbolInfo.Address - $SymbolInfo.ModBase
+                Module = $Path
             }
             return $True
         }
