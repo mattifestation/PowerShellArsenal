@@ -103,7 +103,7 @@ function Get-MethodAssembly {
                 $Mode = [Capstone.Mode]::Mode64
             }
 
-            $Code = @(Get-CSDisassembly -Code $TextSectionBytes -Architecture X86 -Mode Mode64 -Count $StepCount)
+            $Code = @(Get-CSDisassembly -Code $TextSectionBytes -Architecture X86 -Mode $Mode)
             if (-not $Code) {
                 throw [InvalidOperationException]"Code not understandable"
             }

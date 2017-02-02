@@ -154,8 +154,8 @@ PDB.SHORT_SYMBOL_INFO
 
         $FunctionDefinitions = @(
             (func $DbgHelpPath SymInitialize ([Boolean]) @([IntPtr], [String], [Boolean]) -Charset ([Runtime.InteropServices.CharSet]::Unicode) -SetLastError),
-            (func $DbgHelpPath SymLoadModuleEx ([Int64]) @([IntPtr], [IntPtr], [String], [String], [Int64], [Int32], [IntPtr], [Int32]) -Charset ([Runtime.InteropServices.CharSet]::Unicode) -SetLastError),
-            (func $DbgHelpPath SymEnumSymbols ([Boolean]) @([IntPtr], [Int64], [String], $Delegate, [IntPtr]) -Charset ([Runtime.InteropServices.CharSet]::Unicode) -SetLastError),
+            (func $DbgHelpPath SymLoadModuleEx ([UInt64]) @([IntPtr], [IntPtr], [String], [String], [UInt64], [UInt32], [IntPtr], [UInt32]) -Charset ([Runtime.InteropServices.CharSet]::Unicode) -SetLastError),
+            (func $DbgHelpPath SymEnumSymbols ([Boolean]) @([IntPtr], [UInt64], [String], $Delegate, [IntPtr]) -Charset ([Runtime.InteropServices.CharSet]::Unicode) -SetLastError),
             (func $DbgHelpPath SymCleanup ([Boolean]) @([IntPtr]) -Charset ([Runtime.InteropServices.CharSet]::Unicode) -SetLastError)
         )
 
