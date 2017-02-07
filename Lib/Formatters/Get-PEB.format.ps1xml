@@ -2,9 +2,6 @@
 <Configuration>
   <DefaultSettings>
     <EnumerableExpansions>
-        <EnumerableExpansion>
-            <Expand>Both</Expand>
-        </EnumerableExpansion>
     </EnumerableExpansions>
   </DefaultSettings>
     <ViewDefinitions>
