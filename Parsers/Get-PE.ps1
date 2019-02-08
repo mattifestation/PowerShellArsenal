@@ -1524,15 +1524,14 @@ Known issues:
                     $PE
                 )
 
-                $SymServerURL = 'http://msdl.microsoft.com/download/symbols'
+                $SymServerURL = 'https://msdl.microsoft.com/download/symbols/'
                 $FileName = Split-Path -Leaf $PE.ModuleName
                 $Request = "{0}/{1}/{2:X8}{3:X}/{1}" -f $SymServerURL,
                                                         $FileName,
                                                         $PE.NTHeader.FileHeader.TimeDateStamp,
                                                         $PE.NTHeader.OptionalHeader.SizeOfImage
-                $Request = "$($Request.Substring(0, $Request.Length - 1))_"
                 $WebClient = New-Object Net.WebClient
-                $WebClient.Headers.Add('User-Agent', 'Microsoft-Symbol-Server/6.6.0007.5')
+                $WebClient.Headers.Add('User-Agent', 'Microsoft-Symbol-Server/10.1710.0.0')
 
                 try {
                     $CabBytes = $WebClient.DownloadData($Request)
