@@ -375,6 +375,27 @@ Known issues:
             DIR64 =    10
         }
 
+        $ImageDebugType = psenum $Mod PE.IMAGE_DEBUG_TYPE UInt32 @{
+            UNKNOWN = 0
+            COFF = 1
+            CODEVIEW = 2
+            FPO = 3
+            MISC = 4
+            EXCEPTION = 5
+            FIXUP = 6
+            OMAP_TO_SRC = 7
+            OMAP_FROM_SRC = 8
+            BORLAND = 9
+            RESERVED10 = 10
+            CLSID = 11
+            VC_FEATURE = 12
+            POGO = 13
+            ILTCG = 14
+            MPX = 15
+            REPRO = 16
+            EX_DLLCHARACTERISTICS = 17
+        }
+
         $ImageDosHeader = struct $Mod PE.IMAGE_DOS_HEADER @{
             e_magic =    field 0 $ImageDosSignature
             e_cblp =     field 1 UInt16
@@ -502,6 +523,17 @@ Known issues:
             NumberOfRelocations =  field 7 UInt16
             NumberOfLinenumbers =  field 8 UInt16
             Characteristics =      field 9 $ImageScn
+        }
+
+        $ImageDebugDir = struct $Mod PE.IMAGE_DEBUG_DIRECTORY @{
+            Characteristics =       field 0 UInt32
+            TimeDateStamp =         field 1 UInt32
+            MajorVersion =          field 2 UInt16
+            MinorVersion =          field 3 UInt16
+            Type =                  field 4 $ImageDebugType
+            SizeOfData =            field 5 UInt32
+            AddressOfRawData =      field 6 UInt32
+            PointerToRawData =      field 7 UInt32
         }
 
         $ImageExportDir = struct $Mod PE.IMAGE_EXPORT_DIRECTORY @{
@@ -1051,6 +1083,64 @@ Known issues:
         # The process read handle is no longer needed at this point.
         if ($ImageType -ne 'File') { $null = $Kernel32::CloseHandle($hProcess) }
 
+        Write-Verbose 'Processing debug directory...'
+
+        # Process debug directory
+        $DebugDirRVA = $NtHeader.OptionalHeader.DataDirectory[6].VirtualAddress
+        $DebugDirSize = $NtHeader.OptionalHeader.DataDirectory[6].Size
+        $DebugInfo = $null
+
+        Write-Verbose "Debug dir RVA: $($DebugDirRVA.ToString('X8'))"
+        Write-Verbose "Debug dir size: $($DebugDirSize.ToString('X8'))"
+
+        if ($DebugDirRVA -and $DebugDirSize) {
+            $DebugDirPtr = [IntPtr] ($PEBase.ToInt64() + $DebugDirRVA)
+
+            $DebugDirFileOffsetPtr = Convert-RVAToFileOffset $DebugDirPtr $SectionHeaders $PEBase
+
+            if ($ImageIsDatafile) {
+                $DebugDirPtr = Convert-RVAToFileOffset $DebugDirPtr $SectionHeaders $PEBase
+            }
+
+            $DebugDir = $DebugDirPtr -as $ImageDebugDir
+            
+            $DebugInfo = $DebugDir
+
+            $CodeViewInfo = $null
+
+            if ($DebugInfo.Type -eq 'CODEVIEW') {
+                # There will be a PDB string present in this case.
+                if ($ImageIsDatafile) {
+                    $CodeViewInfoPtr = [IntPtr] ($PEBase.ToInt64() + $DebugInfo.PointerToRawData)
+                } else {
+                    $CodeViewInfoPtr = [IntPtr] ($PEBase.ToInt64() + $DebugInfo.AddressOfRawData)
+                }
+
+                [Byte[]] $CodeViewInfoBytes = New-Object -TypeName Byte[]($DebugInfo.SizeOfData)
+
+                [Runtime.InteropServices.Marshal]::Copy($CodeViewInfoPtr, $CodeViewInfoBytes, 0, $DebugInfo.SizeOfData)
+
+                $Signature = [Text.Encoding]::ASCII.GetString($CodeViewInfoBytes[0..3])
+                $Guid = [Guid][Byte[]] $CodeViewInfoBytes[4..19]
+                $Age = [BitConverter]::ToUInt32($CodeViewInfoBytes, 20)
+                $PDB = [Text.Encoding]::ASCII.GetString($CodeViewInfoBytes[24..($DebugInfo.SizeOfData - 1)]).TrimEnd("`0")
+
+                $CodeViewInfoProperties = @{
+                    Signature = $Signature
+                    GUID = $Guid
+                    Age = $Age
+                    PDB = $PDB
+                }
+
+                $CodeViewInfo = New-Object PSObject -Property $CodeViewInfoProperties
+                $CodeViewInfo.PSObject.TypeNames.Insert(0, 'PE.CodeViewInfo')
+            }
+
+            Add-Member -InputObject $DebugInfo -MemberType NoteProperty -Name CodeViewInfo -Value $CodeViewInfo
+
+            $DebugInfo.PSObject.TypeNames.Insert(0, 'PE.DebugDir')
+        }
+
         Write-Verbose 'Processing imports...'
 
         # Process imports
@@ -1509,6 +1599,7 @@ Known issues:
                 Imports = $Imports
                 ExportDirectory = $ExportDir
                 Exports = $Exports
+                DebugInfo = $DebugInfo
             }
 
             $PE = New-Object PSObject -Property $Fields
