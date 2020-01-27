@@ -28,7 +28,7 @@ Get the PEB of every process. Note: To get the PEBs for all processes, run this 
 
 .EXAMPLE
 
-C:\PS> $NotepadPEB = Get-PEB -Id (ps notepad)
+C:\PS> $NotepadPEB = Get-PEB -Id (ps notepad).Id
 C:\PS> $NotepadPEB.InInitializationOrderModuleList
 
 Description
