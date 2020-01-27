@@ -238,6 +238,10 @@ are all incorporated into the same in-memory module.
 
     PROCESS
     {
+        # DllName might be a path to a DLL - we need to sanitize it then
+        $DllPath = $DllName
+        $DllName = [IO.Path]::GetFileNameWithoutExtension($DllName)
+
         if ($Module -is [Reflection.Assembly])
         {
             if ($Namespace)
@@ -291,7 +295,7 @@ are all incorporated into the same in-memory module.
             # Equivalent to C# version of [DllImport(DllName)]
             $Constructor = [Runtime.InteropServices.DllImportAttribute].GetConstructor([String])
             $DllImportAttribute = New-Object Reflection.Emit.CustomAttributeBuilder($Constructor,
-                $DllName, [Reflection.PropertyInfo[]] @(), [Object[]] @(),
+                $DllPath, [Reflection.PropertyInfo[]] @(), [Object[]] @(),
                 [Reflection.FieldInfo[]] @($SetLastErrorField, $CallingConventionField, $CharsetField),
                 [Object[]] @($SLEValue, ([Runtime.InteropServices.CallingConvention] $NativeCallingConvention), ([Runtime.InteropServices.CharSet] $Charset)))
 
@@ -517,6 +521,10 @@ Specifies the memory alignment of fields.
 
 Indicates that an explicit offset for each field will be specified.
 
+.PARAMETER Charset
+
+Specifies whether strings inside the struct will be marshalled as LPWSTR or LPSTR.
+
 .EXAMPLE
 
 $Mod = New-InMemoryModule -ModuleName Win32
@@ -585,7 +593,10 @@ New-Struct. :P
         $PackingSize = [Reflection.Emit.PackingSize]::Unspecified,
 
         [Switch]
-        $ExplicitLayout
+        $ExplicitLayout,
+
+        [Runtime.InteropServices.CharSet]
+        $Charset = [Runtime.InteropServices.CharSet]::Auto
     )
 
     if ($Module -is [Reflection.Assembly])
@@ -602,13 +613,25 @@ New-Struct. :P
     if ($ExplicitLayout)
     {
         $StructAttributes = $StructAttributes -bor [Reflection.TypeAttributes]::ExplicitLayout
+        $StructLayoutKind = [System.Runtime.InteropServices.LayoutKind]::Explicit
     }
     else
     {
         $StructAttributes = $StructAttributes -bor [Reflection.TypeAttributes]::SequentialLayout
+        $StructLayoutKind = [System.Runtime.InteropServices.LayoutKind]::Sequential
     }
 
     $StructBuilder = $Module.DefineType($FullName, $StructAttributes, [ValueType], $PackingSize)
+    if ($Charset -ne [Runtime.InteropServices.CharSet]::Auto) 
+    {
+        # Set attributes on the newly created struct type
+        $CharsetField = [Runtime.InteropServices.StructLayoutAttribute].GetField('CharSet')
+        $StructAttributeBuilder = New-Object System.Reflection.Emit.CustomAttributeBuilder(
+            [Runtime.InteropServices.StructLayoutAttribute].GetConstructors()[0], @($StructLayoutKind),
+            @(), @(), @($CharsetField), @($Charset))
+        $StructBuilder.SetCustomAttribute($StructAttributeBuilder)
+    }
+
     $ConstructorInfo = [Runtime.InteropServices.MarshalAsAttribute].GetConstructors()[0]
     $SizeConst = @([Runtime.InteropServices.MarshalAsAttribute].GetField('SizeConst'))
 

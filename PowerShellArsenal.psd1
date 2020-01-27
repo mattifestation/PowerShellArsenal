@@ -39,7 +39,8 @@ FormatsToProcess = @('Lib\Formatters\Get-CSDisassembly.format.ps1xml',
                      'Lib\Formatters\Get-PEB.format.ps1xml',
                      'Lib\Formatters\Get-PE.format.ps1xml',
                      'Lib\Formatters\ProcessModuleTrace.format.ps1xml',
-                     'Lib\Formatters\MemoryTools.format.ps1xml')
+                     'Lib\Formatters\MemoryTools.format.ps1xml',
+                     'Lib\Formatters\Get-PESymbols.format.ps1xml')
 
 # Modules to import as nested modules of the module specified in RootModule/ModuleToProcess
 NestedModules = @('Lib\Capstone\Capstone.psd1',
@@ -49,6 +50,8 @@ NestedModules = @('Lib\Capstone\Capstone.psd1',
 # I've chosen to explicitly the functions I want to expose rather than exporting everything or calling Export-ModuleMember
 FunctionsToExport = @('Get-CSDisassembly',
                       'Get-ILDisassembly',
+                      'Get-MethodAssembly',
+                      'Get-MethodGraph',
                       'Get-StructFromMemory',
                       'ConvertTo-String',
                       'Get-Strings',
@@ -57,6 +60,7 @@ FunctionsToExport = @('Get-CSDisassembly',
                       'Get-PE',
                       'Get-PEB',
                       'Find-ProcessPEs',
+                      'Get-PESymbols',
                       'Get-LibSymbols',
                       'Get-ObjDump',
                       'Get-SystemInfo',
