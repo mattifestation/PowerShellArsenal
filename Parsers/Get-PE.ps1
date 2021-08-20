@@ -273,7 +273,7 @@ Known issues:
         $ImageFileCharacteristics = psenum $Mod PE.IMAGE_FILE_CHARACTERISTICS UInt16 @{
             IMAGE_RELOCS_STRIPPED =         0x0001 # Relocation info stripped from file.
             IMAGE_EXECUTABLE_IMAGE =        0x0002 # File is executable  (i.e. no unresolved external references).
-            IMAGE_LINE_NUMS_STRIPPED =      0x0004 # Line nunbers stripped from file.
+            IMAGE_LINE_NUMS_STRIPPED =      0x0004 # Line numbers stripped from file.
             IMAGE_LOCAL_SYMS_STRIPPED =     0x0008 # Local symbols stripped from file.
             IMAGE_AGGRESIVE_WS_TRIM =       0x0010 # Agressively trim working set
             IMAGE_LARGE_ADDRESS_AWARE =     0x0020 # App can handle >2gb addresses
@@ -373,6 +373,27 @@ Known issues:
             HIGHLOW =  3
             HIGHADJ =  4
             DIR64 =    10
+        }
+
+        $ImageDebugType = psenum $Mod PE.IMAGE_DEBUG_TYPE UInt32 @{
+            UNKNOWN = 0
+            COFF = 1
+            CODEVIEW = 2
+            FPO = 3
+            MISC = 4
+            EXCEPTION = 5
+            FIXUP = 6
+            OMAP_TO_SRC = 7
+            OMAP_FROM_SRC = 8
+            BORLAND = 9
+            RESERVED10 = 10
+            CLSID = 11
+            VC_FEATURE = 12
+            POGO = 13
+            ILTCG = 14
+            MPX = 15
+            REPRO = 16
+            EX_DLLCHARACTERISTICS = 17
         }
 
         $ImageDosHeader = struct $Mod PE.IMAGE_DOS_HEADER @{
@@ -502,6 +523,17 @@ Known issues:
             NumberOfRelocations =  field 7 UInt16
             NumberOfLinenumbers =  field 8 UInt16
             Characteristics =      field 9 $ImageScn
+        }
+
+        $ImageDebugDir = struct $Mod PE.IMAGE_DEBUG_DIRECTORY @{
+            Characteristics =       field 0 UInt32
+            TimeDateStamp =         field 1 UInt32
+            MajorVersion =          field 2 UInt16
+            MinorVersion =          field 3 UInt16
+            Type =                  field 4 $ImageDebugType
+            SizeOfData =            field 5 UInt32
+            AddressOfRawData =      field 6 UInt32
+            PointerToRawData =      field 7 UInt32
         }
 
         $ImageExportDir = struct $Mod PE.IMAGE_EXPORT_DIRECTORY @{
@@ -1051,6 +1083,64 @@ Known issues:
         # The process read handle is no longer needed at this point.
         if ($ImageType -ne 'File') { $null = $Kernel32::CloseHandle($hProcess) }
 
+        Write-Verbose 'Processing debug directory...'
+
+        # Process debug directory
+        $DebugDirRVA = $NtHeader.OptionalHeader.DataDirectory[6].VirtualAddress
+        $DebugDirSize = $NtHeader.OptionalHeader.DataDirectory[6].Size
+        $DebugInfo = $null
+
+        Write-Verbose "Debug dir RVA: $($DebugDirRVA.ToString('X8'))"
+        Write-Verbose "Debug dir size: $($DebugDirSize.ToString('X8'))"
+
+        if ($DebugDirRVA -and $DebugDirSize) {
+            $DebugDirPtr = [IntPtr] ($PEBase.ToInt64() + $DebugDirRVA)
+
+            $DebugDirFileOffsetPtr = Convert-RVAToFileOffset $DebugDirPtr $SectionHeaders $PEBase
+
+            if ($ImageIsDatafile) {
+                $DebugDirPtr = Convert-RVAToFileOffset $DebugDirPtr $SectionHeaders $PEBase
+            }
+
+            $DebugDir = $DebugDirPtr -as $ImageDebugDir
+            
+            $DebugInfo = $DebugDir
+
+            $CodeViewInfo = $null
+
+            if ($DebugInfo.Type -eq 'CODEVIEW') {
+                # There will be a PDB string present in this case.
+                if ($ImageIsDatafile) {
+                    $CodeViewInfoPtr = [IntPtr] ($PEBase.ToInt64() + $DebugInfo.PointerToRawData)
+                } else {
+                    $CodeViewInfoPtr = [IntPtr] ($PEBase.ToInt64() + $DebugInfo.AddressOfRawData)
+                }
+
+                [Byte[]] $CodeViewInfoBytes = New-Object -TypeName Byte[]($DebugInfo.SizeOfData)
+
+                [Runtime.InteropServices.Marshal]::Copy($CodeViewInfoPtr, $CodeViewInfoBytes, 0, $DebugInfo.SizeOfData)
+
+                $Signature = [Text.Encoding]::ASCII.GetString($CodeViewInfoBytes[0..3])
+                $Guid = [Guid][Byte[]] $CodeViewInfoBytes[4..19]
+                $Age = [BitConverter]::ToUInt32($CodeViewInfoBytes, 20)
+                $PDB = [Text.Encoding]::ASCII.GetString($CodeViewInfoBytes[24..($DebugInfo.SizeOfData - 1)]).TrimEnd("`0")
+
+                $CodeViewInfoProperties = @{
+                    Signature = $Signature
+                    GUID = $Guid
+                    Age = $Age
+                    PDB = $PDB
+                }
+
+                $CodeViewInfo = New-Object PSObject -Property $CodeViewInfoProperties
+                $CodeViewInfo.PSObject.TypeNames.Insert(0, 'PE.CodeViewInfo')
+            }
+
+            Add-Member -InputObject $DebugInfo -MemberType NoteProperty -Name CodeViewInfo -Value $CodeViewInfo
+
+            $DebugInfo.PSObject.TypeNames.Insert(0, 'PE.DebugDir')
+        }
+
         Write-Verbose 'Processing imports...'
 
         # Process imports
@@ -1509,6 +1599,7 @@ Known issues:
                 Imports = $Imports
                 ExportDirectory = $ExportDir
                 Exports = $Exports
+                DebugInfo = $DebugInfo
             }
 
             $PE = New-Object PSObject -Property $Fields
@@ -1524,15 +1615,14 @@ Known issues:
                     $PE
                 )
 
-                $SymServerURL = 'http://msdl.microsoft.com/download/symbols'
+                $SymServerURL = 'https://msdl.microsoft.com/download/symbols/'
                 $FileName = Split-Path -Leaf $PE.ModuleName
                 $Request = "{0}/{1}/{2:X8}{3:X}/{1}" -f $SymServerURL,
                                                         $FileName,
                                                         $PE.NTHeader.FileHeader.TimeDateStamp,
                                                         $PE.NTHeader.OptionalHeader.SizeOfImage
-                $Request = "$($Request.Substring(0, $Request.Length - 1))_"
                 $WebClient = New-Object Net.WebClient
-                $WebClient.Headers.Add('User-Agent', 'Microsoft-Symbol-Server/6.6.0007.5')
+                $WebClient.Headers.Add('User-Agent', 'Microsoft-Symbol-Server/10.1710.0.0')
 
                 try {
                     $CabBytes = $WebClient.DownloadData($Request)

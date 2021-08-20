@@ -61,6 +61,9 @@
                             <ListItem>
                                 <PropertyName>Exports</PropertyName>
                             </ListItem>
+                            <ListItem>
+                                <PropertyName>DebugInfo</PropertyName>
+                            </ListItem>
                         </ListItems>
                     </ListEntry>
                 </ListEntries>
@@ -329,6 +332,78 @@
                         </TableRowEntry>
                     </TableRowEntries>
                 </TableControl>
+        </View>
+        <View>
+            <Name>CodeViewInfoView</Name>
+            <ViewSelectedBy>
+		            <TypeName>PE.CodeViewInfo</TypeName>
+		        </ViewSelectedBy>
+            <ListControl>
+                <ListEntries>
+                    <ListEntry>
+                        <ListItems>
+                            <ListItem>
+                                <PropertyName>Signature</PropertyName>
+                            </ListItem>
+                            <ListItem>
+                                <PropertyName>GUID</PropertyName>
+                            </ListItem>
+                            <ListItem>
+                                <PropertyName>Age</PropertyName>
+                            </ListItem>
+                            <ListItem>
+                                <PropertyName>PDB</PropertyName>
+                            </ListItem>
+                        </ListItems>
+                    </ListEntry>
+                </ListEntries>
+            </ListControl>
+        </View>
+        <View>
+            <Name>DebugDirView</Name>
+            <ViewSelectedBy>
+		            <TypeName>PE.DebugDir</TypeName>
+		        </ViewSelectedBy>
+            <ListControl>
+                <ListEntries>
+                    <ListEntry>
+                        <ListItems>
+                            <ListItem>
+                                <Label>Characteristics</Label>
+                                <ScriptBlock>"0x$($_.Characteristics.ToString('X8'))"</ScriptBlock>
+                            </ListItem>
+                            <ListItem>
+                                <Label>TimeDateStamp</Label>
+                                <ScriptBlock>(New-Object DateTime(1970, 1, 1, 0, 0, 0)).AddSeconds($_.TimeDateStamp)</ScriptBlock>
+                            </ListItem>
+                            <ListItem>
+                                <PropertyName>MajorVersion</PropertyName>
+                            </ListItem>
+                            <ListItem>
+                                <PropertyName>MinorVersion</PropertyName>
+                            </ListItem>
+                            <ListItem>
+                                <PropertyName>Type</PropertyName>
+                            </ListItem>
+                            <ListItem>
+                                <Label>SizeOfData</Label>
+                                <ScriptBlock>"0x$($_.SizeOfData.ToString('X8'))"</ScriptBlock>
+                            </ListItem>
+                            <ListItem>
+                                <Label>AddressOfRawData</Label>
+                                <ScriptBlock>"0x$($_.AddressOfRawData.ToString('X8'))"</ScriptBlock>
+                            </ListItem>
+                            <ListItem>
+                                <Label>PointerToRawData</Label>
+                                <ScriptBlock>"0x$($_.PointerToRawData.ToString('X8'))"</ScriptBlock>
+                            </ListItem>
+                            <ListItem>
+                                <PropertyName>CodeViewInfo</PropertyName>
+                            </ListItem>
+                        </ListItems>
+                    </ListEntry>
+                </ListEntries>
+            </ListControl>
         </View>
         <View>
             <Name>ImportDirView</Name>
